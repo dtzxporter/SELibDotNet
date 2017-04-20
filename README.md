@@ -10,3 +10,4 @@ A .NET library for reading and writing SE Format files
 ## Usage:
 
 Download the latest version, add it as a reference to your .NET based project and start working with SE Formats!
+(Check out UnitTests for examples on using the library, everything has full documentation though.)

@@ -72,7 +72,7 @@ namespace SELib
     }
 
     /// <summary>
-    /// Specifies the data present for each frame of every bone (Internal use only, matches specification v1.0.1
+    /// Specifies the data present for each frame of every bone (Internal use only, matches specification v1.0.1)
     /// </summary>
     internal enum DataPresenceFlags : byte
     {

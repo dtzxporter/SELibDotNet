@@ -130,6 +130,25 @@ namespace UnitTests
                 Console.WriteLine("DONE!");
             }
 
+            {
+                // Log
+                Console.Write("-- Test 6   ");
+                // Read from test 5
+                var anim = SEAnim.Read("test5.seanim");
+                
+                // Check data
+                System.Diagnostics.Debug.Assert(anim.AnimationNotetracks.Count == 2);
+                System.Diagnostics.Debug.Assert(anim.AnimationPositionKeys.Count == 1);
+                System.Diagnostics.Debug.Assert(anim.AnimationRotationKeys.Count == 1);
+                System.Diagnostics.Debug.Assert(anim.AnimationScaleKeys.Count == 1);
+                System.Diagnostics.Debug.Assert(anim.BoneCount == 1);
+                System.Diagnostics.Debug.Assert(anim.FrameCount == 51);
+                System.Diagnostics.Debug.Assert(anim.FrameRate == 30.0);
+
+                // Done
+                Console.WriteLine("DONE!");
+            }
+
             #endregion
 
             // Pause

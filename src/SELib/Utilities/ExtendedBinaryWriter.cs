@@ -29,12 +29,14 @@ namespace SELib.Utilities
         /// <param name="value">The string to write</param>
         public void WriteNullTermString(string value)
         {
+            // Check value
             if (string.IsNullOrEmpty(value))
             {
                 value = string.Empty;
             }
-            byte[] buffer = Encoding.ASCII.GetBytes(value);
-            Write(buffer);
+            // Write to file
+            Write(Encoding.ASCII.GetBytes(value));
+            // Write the null-char
             Write((byte)0);
         }
     }

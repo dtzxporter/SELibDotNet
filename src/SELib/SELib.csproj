@@ -41,6 +41,7 @@
   <ItemGroup>
     <Compile Include="SEAnim.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Utilities\ExtendedBinaryReader.cs" />
     <Compile Include="Utilities\ExtendedBinaryWriter.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

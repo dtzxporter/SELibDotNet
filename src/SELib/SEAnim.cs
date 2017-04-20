@@ -122,23 +122,23 @@ namespace SELib
         /// <summary>
         /// A list of animation keys, by bone, for positions
         /// </summary>
-        private Dictionary<string, List<SEAnimFrame>> AnimationPositionKeys;
+        public Dictionary<string, List<SEAnimFrame>> AnimationPositionKeys { get; private set; }
         /// <summary>
         /// A list of animation keys, by bone, for rotations
         /// </summary>
-        private Dictionary<string, List<SEAnimFrame>> AnimationRotationKeys;
+        public Dictionary<string, List<SEAnimFrame>> AnimationRotationKeys { get; private set; }
         /// <summary>
         /// A list of animation keys, by bone, for scales
         /// </summary>
-        private Dictionary<string, List<SEAnimFrame>> AnimationScaleKeys;
+        public Dictionary<string, List<SEAnimFrame>> AnimationScaleKeys { get; private set; }
         /// <summary>
         /// A list of animation keys, for notetracks
         /// </summary>
-        private Dictionary<string, List<SEAnimFrame>> AnimationNotetracks;
+        public Dictionary<string, List<SEAnimFrame>> AnimationNotetracks { get; private set; }
         /// <summary>
         /// A list of animation modifiers, by bone
         /// </summary>
-        private Dictionary<string, AnimationType> AnimationBoneModifiers;
+        public Dictionary<string, AnimationType> AnimationBoneModifiers { get; private set; }
 
         /* Animation properties */
 
@@ -192,6 +192,331 @@ namespace SELib
             FrameRate = 30.0f;
         }
 
+        #region Reading
+
+        /// <summary>
+        /// Reads a SEAnim from a stream
+        /// </summary>
+        /// <param name="Stream">The stream to read from</param>
+        /// <returns>A SEAnim if successful, otherwise throws an error and returns null</returns>
+        public static SEAnim Read(Stream Stream)
+        {
+            // Create a new anim
+            var anim = new SEAnim();
+            // Setup a new reader
+            using (ExtendedBinaryReader readFile = new ExtendedBinaryReader(Stream))
+            {
+                // Magic
+                var Magic = readFile.ReadChars(6);
+                // Version
+                var Version = readFile.ReadInt16();
+                // Header size
+                var HeaderSize = readFile.ReadInt16();
+                // Check magic
+                if (!Magic.SequenceEqual(new char[] { 'S', 'E', 'A', 'n', 'i', 'm' }))
+                {
+                    // Bad file
+                    throw new Exception("Bad SEAnim file, magic was invalid");
+                }
+                // Read animation type
+                anim.AnimType = (AnimationType)readFile.ReadByte();
+                // Read anim flags
+                var AnimFlags = readFile.ReadByte();
+                // Check flags
+                {
+                    // Looping flag
+                    anim.Looping = Convert.ToBoolean(AnimFlags & (byte)(1 << 0));
+                }
+                // Read data present
+                var DataPresentFlags = readFile.ReadByte();
+                // Read data property flags
+                var DataPropertyFlags = readFile.ReadByte();
+                // Skip over 2 bytes reserved
+                readFile.BaseStream.Position += 2;
+                // Read framerate
+                anim.FrameRate = readFile.ReadSingle();
+                // Read numframes
+                var NumFrames = readFile.ReadInt32();
+                // Read numbones
+                var NumBones = readFile.ReadInt32();
+                // Read nummods
+                var NumMods = readFile.ReadByte();
+                // Skip 3 reserved bytes
+                readFile.BaseStream.Position += 3;
+                // Read numnotes
+                var NumNotes = readFile.ReadInt32();
+                // Loop and read bone names
+                List<string> BoneNames = new List<string>();
+                // Loop
+                for (int i = 0; i < NumBones; i++)
+                {
+                    BoneNames.Add(readFile.ReadNullTermString());
+                }
+                // Loop and read bone modifiers
+                for (int i = 0; i < NumMods; i++)
+                {
+                    // Check bone count buffer and read the bone index
+                    var BoneIndex = (NumBones <= 0xFF ? readFile.ReadByte() : readFile.ReadUInt16());
+                    // Read modifier and add
+                    anim.AnimationBoneModifiers.Add(BoneNames[BoneIndex], (AnimationType)readFile.ReadByte());
+                }
+                // We must read the data per bone, in the bone names order
+                foreach (string Bone in BoneNames)
+                {
+                    // Read bone flags (unused)
+                    var BoneFlags = readFile.ReadByte();
+                    // Read translations if any
+                    #region Translation Keys
+
+                    {
+                        // Check if we have translations
+                        if (Convert.ToBoolean(DataPresentFlags & (byte)DataPresenceFlags.SEANIM_BONE_LOC))
+                        {
+                            // We have translations, read count based on frame count
+                            var NumTranslations = 0;
+                            // Check framecount
+                            if ((NumFrames - 1) <= 0xFF)
+                            {
+                                // Read as byte
+                                NumTranslations = readFile.ReadByte();
+                            }
+                            else if ((NumFrames - 1) <= 0xFFFF)
+                            {
+                                // Read as ushort
+                                NumTranslations = readFile.ReadUInt16();
+                            }
+                            else
+                            {
+                                // Read as int
+                                NumTranslations = readFile.ReadInt32();
+                            }
+                            // Loop and read translations
+                            for (int i = 0; i < NumTranslations; i++)
+                            {
+                                var KeyFrame = 0;
+                                // Check framecount
+                                if ((NumFrames - 1) <= 0xFF)
+                                {
+                                    // Read as byte
+                                    KeyFrame = readFile.ReadByte();
+                                }
+                                else if ((NumFrames - 1) <= 0xFFFF)
+                                {
+                                    // Read as ushort
+                                    KeyFrame = readFile.ReadUInt16();
+                                }
+                                else
+                                {
+                                    // Read as int
+                                    KeyFrame = readFile.ReadInt32();
+                                }
+                                // Read the vector, check precision flags
+                                double X = 0.0, Y = 0.0, Z = 0.0;
+                                // Check precision flags
+                                if (Convert.ToBoolean(DataPropertyFlags & (1 << 0)))
+                                {
+                                    // Read as doubles
+                                    X = readFile.ReadDouble();
+                                    Y = readFile.ReadDouble();
+                                    Z = readFile.ReadDouble();
+                                }
+                                else
+                                {
+                                    // Read as floats
+                                    X = readFile.ReadSingle();
+                                    Y = readFile.ReadSingle();
+                                    Z = readFile.ReadSingle();
+                                }
+                                // Add the key
+                                anim.AddTranslationKey(Bone, KeyFrame, X, Y, Z);
+                            }
+                        }
+                    }
+
+                    #endregion
+                    // Read rotations if any
+                    #region Rotation Keys
+
+                    {
+                        // Check if we have rotations
+                        if (Convert.ToBoolean(DataPresentFlags & (byte)DataPresenceFlags.SEANIM_BONE_ROT))
+                        {
+                            // We have rotations, read count based on frame count
+                            var NumRotations = 0;
+                            // Check framecount
+                            if ((NumFrames - 1) <= 0xFF)
+                            {
+                                // Read as byte
+                                NumRotations = readFile.ReadByte();
+                            }
+                            else if ((NumFrames - 1) <= 0xFFFF)
+                            {
+                                // Read as ushort
+                                NumRotations = readFile.ReadUInt16();
+                            }
+                            else
+                            {
+                                // Read as int
+                                NumRotations = readFile.ReadInt32();
+                            }
+                            // Loop and read rotations
+                            for (int i = 0; i < NumRotations; i++)
+                            {
+                                var KeyFrame = 0;
+                                // Check framecount
+                                if ((NumFrames - 1) <= 0xFF)
+                                {
+                                    // Read as byte
+                                    KeyFrame = readFile.ReadByte();
+                                }
+                                else if ((NumFrames - 1) <= 0xFFFF)
+                                {
+                                    // Read as ushort
+                                    KeyFrame = readFile.ReadUInt16();
+                                }
+                                else
+                                {
+                                    // Read as int
+                                    KeyFrame = readFile.ReadInt32();
+                                }
+                                // Read the quat, check precision flags
+                                double X = 0.0, Y = 0.0, Z = 0.0, W = 0.0;
+                                // Check precision flags
+                                if (Convert.ToBoolean(DataPropertyFlags & (1 << 0)))
+                                {
+                                    // Read as doubles
+                                    X = readFile.ReadDouble();
+                                    Y = readFile.ReadDouble();
+                                    Z = readFile.ReadDouble();
+                                    W = readFile.ReadDouble();
+                                }
+                                else
+                                {
+                                    // Read as floats
+                                    X = readFile.ReadSingle();
+                                    Y = readFile.ReadSingle();
+                                    Z = readFile.ReadSingle();
+                                    W = readFile.ReadSingle();
+                                }
+                                // Add the key
+                                anim.AddRotationKey(Bone, KeyFrame, X, Y, Z, W);
+                            }
+                        }
+                    }
+
+                    #endregion
+                    // Read scales if any
+                    #region Scale Keys
+
+                    {
+                        // Check if we have scales
+                        if (Convert.ToBoolean(DataPresentFlags & (byte)DataPresenceFlags.SEANIM_BONE_SCALE))
+                        {
+                            // We have scales, read count based on frame count
+                            var NumScales = 0;
+                            // Check framecount
+                            if ((NumFrames - 1) <= 0xFF)
+                            {
+                                // Read as byte
+                                NumScales = readFile.ReadByte();
+                            }
+                            else if ((NumFrames - 1) <= 0xFFFF)
+                            {
+                                // Read as ushort
+                                NumScales = readFile.ReadUInt16();
+                            }
+                            else
+                            {
+                                // Read as int
+                                NumScales = readFile.ReadInt32();
+                            }
+                            // Loop and read scales
+                            for (int i = 0; i < NumScales; i++)
+                            {
+                                var KeyFrame = 0;
+                                // Check framecount
+                                if ((NumFrames - 1) <= 0xFF)
+                                {
+                                    // Read as byte
+                                    KeyFrame = readFile.ReadByte();
+                                }
+                                else if ((NumFrames - 1) <= 0xFFFF)
+                                {
+                                    // Read as ushort
+                                    KeyFrame = readFile.ReadUInt16();
+                                }
+                                else
+                                {
+                                    // Read as int
+                                    KeyFrame = readFile.ReadInt32();
+                                }
+                                // Read the vector, check precision flags
+                                double X = 0.0, Y = 0.0, Z = 0.0;
+                                // Check precision flags
+                                if (Convert.ToBoolean(DataPropertyFlags & (1 << 0)))
+                                {
+                                    // Read as doubles
+                                    X = readFile.ReadDouble();
+                                    Y = readFile.ReadDouble();
+                                    Z = readFile.ReadDouble();
+                                }
+                                else
+                                {
+                                    // Read as floats
+                                    X = readFile.ReadSingle();
+                                    Y = readFile.ReadSingle();
+                                    Z = readFile.ReadSingle();
+                                }
+                                // Add the key
+                                anim.AddScaleKey(Bone, KeyFrame, X, Y, Z);
+                            }
+                        }
+                    }
+
+                    #endregion
+                }
+                // Read notifications, if any
+                for (int i = 0; i < NumNotes; i++)
+                {
+                    // Get the keyframe for the notification based on the framecount
+                    var KeyFrame = 0;
+                    // Check framecount
+                    if ((NumFrames - 1) <= 0xFF)
+                    {
+                        // Read as byte
+                        KeyFrame = readFile.ReadByte();
+                    }
+                    else if ((NumFrames - 1) <= 0xFFFF)
+                    {
+                        // Read as ushort
+                        KeyFrame = readFile.ReadUInt16();
+                    }
+                    else
+                    {
+                        // Read as int
+                        KeyFrame = readFile.ReadInt32();
+                    }
+                    // Read the name and add
+                    anim.AddNoteTrack(readFile.ReadNullTermString(), KeyFrame);
+                }
+            }
+            // Return result
+            return anim;
+        }
+
+        /// <summary>
+        /// Reads a SEAnim file, following the current specification
+        /// </summary>
+        /// <param name="FileName">The file name to open</param>
+        /// <returns></returns>
+        public static SEAnim Read(string FileName)
+        {
+            // Proxy off
+            return Read(File.OpenRead(FileName));
+        }
+
+        #endregion
+
         #region Writing
 
         /// <summary>
@@ -199,7 +524,7 @@ namespace SELib
         /// </summary>
         /// <param name="Stream">The file stream to write to</param>
         /// <param name="HighPrecision">Whether or not to use doubles or floats (Defaults to floats)</param>
-        public void Write(FileStream Stream, bool HighPrecision)
+        public void Write(Stream Stream, bool HighPrecision)
         {
             // Open up a binary writer
             using (ExtendedBinaryWriter writeFile = new ExtendedBinaryWriter(Stream))

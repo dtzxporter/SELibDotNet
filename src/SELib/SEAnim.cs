@@ -195,14 +195,14 @@ namespace SELib
         #region Writing
 
         /// <summary>
-        /// Saves the SEAnim to a file (Overwriting if exists), following the current specification version, using the provided data
+        /// Saves the SEAnim to a stream, following the current specification version, using the provided data
         /// </summary>
-        /// <param name="FileName">The file name to save the animation to</param>
+        /// <param name="Stream">The file stream to write to</param>
         /// <param name="HighPrecision">Whether or not to use doubles or floats (Defaults to floats)</param>
-        public void Write(string FileName, bool HighPrecision = false)
+        public void Write(FileStream Stream, bool HighPrecision)
         {
             // Open up a binary writer
-            using (ExtendedBinaryWriter writeFile = new ExtendedBinaryWriter(File.Create(FileName)))
+            using (ExtendedBinaryWriter writeFile = new ExtendedBinaryWriter(Stream))
             {
                 // Write magic
                 writeFile.Write(new char[] { 'S', 'E', 'A', 'n', 'i', 'm' });
@@ -579,6 +579,17 @@ namespace SELib
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Saves the SEAnim to a file (Overwriting if exists), following the current specification version, using the provided data
+        /// </summary>
+        /// <param name="FileName">The file name to save the animation to</param>
+        /// <param name="HighPrecision">Whether or not to use doubles or floats (Defaults to floats)</param>
+        public void Write(string FileName, bool HighPrecision = false)
+        {
+            // Proxy off
+            Write(File.Create(FileName), HighPrecision);
         }
 
         #endregion

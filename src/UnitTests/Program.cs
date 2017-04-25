@@ -5,6 +5,14 @@ using System.Text;
 using System.Threading.Tasks;
 using SELib;
 
+///
+///   Program.cs (Unit tests)
+///   Author: DTZxPorter
+///   Written for the SE Format Project
+///   Follows SEAnim specification v1.0.1
+///   https://github.com/SE2Dev/SEAnim-Docs/blob/master/spec.md
+///
+
 namespace UnitTests
 {
     class Program
@@ -12,6 +20,7 @@ namespace UnitTests
         static void Main(string[] args)
         {
             // SELib Unit Test
+            Console.Title = "SELib Unit Tests";
             Console.WriteLine("SELib Unit Tests\n");
 
             #region SEAnim
@@ -144,6 +153,13 @@ namespace UnitTests
                 System.Diagnostics.Debug.Assert(anim.BoneCount == 1);
                 System.Diagnostics.Debug.Assert(anim.FrameCount == 51);
                 System.Diagnostics.Debug.Assert(anim.FrameRate == 30.0);
+
+                // Version
+                System.Diagnostics.Debug.Assert(anim.APIVersion == "v1.0.1");
+
+                // Check functions
+                System.Diagnostics.Debug.Assert(anim.RenameBone("shoulder", "shoulder") == false);
+                System.Diagnostics.Debug.Assert(anim.RenameBone("shoulder", "new_shoulder") == true);
 
                 // Done
                 Console.WriteLine("DONE!");

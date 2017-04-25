@@ -51,7 +51,7 @@ namespace SELib
     /// <summary>
     /// Specifies how the data is interpreted by the importer
     /// </summary>
-    public enum AnimationType : int
+    public enum AnimationType : byte
     {
         /// <summary>
         /// Animation translations are set to this exact value each frame
@@ -62,7 +62,7 @@ namespace SELib
         /// </summary>
         Additive = 1,
         /// <summary>
-        /// Animation translations are based on rest position (Frame 0)
+        /// Animation translations are based on rest position in scene
         /// </summary>
         Relative = 2,
         /// <summary>
@@ -151,6 +151,10 @@ namespace SELib
         /// </summary>
         public int BoneCount { get { return CalculateBoneCount(); } }
         /// <summary>
+        /// A list of bones currently being used in this animation, this is automatically updated
+        /// </summary>
+        public List<string> Bones { get { return BuildUniqueOrderedBoneMap(); } }
+        /// <summary>
         /// The count of notifications in the animation, this is automatically updated
         /// </summary>
         public int NotificationCount { get { return CalculateNotetracksCount(); } }
@@ -170,6 +174,10 @@ namespace SELib
         /// The framerate of the animation as a float (Defaults to 30.0)
         /// </summary>
         public float FrameRate { get; set; }
+        /// <summary>
+        /// Gets the SEAnim specification version this library supports
+        /// </summary>
+        public string APIVersion { get { return "v1.0.1"; } }
         
         /// <summary>
         /// Creates a new SEAnim using default settings
@@ -191,6 +199,154 @@ namespace SELib
             // Frame fps
             FrameRate = 30.0f;
         }
+
+        /* Functions and utilities */
+
+        #region Utilities
+
+        /// <summary>
+        /// Remove an existing notification and it's keyframes
+        /// </summary>
+        /// <param name="NoteName">The notetrack name to remove</param>
+        public void RemoveNotetrack(string NoteName)
+        {
+            // Check if we have it
+            if (AnimationNotetracks.ContainsKey(NoteName))
+            {
+                // Remove it
+                AnimationNotetracks.Remove(NoteName);
+            }
+        }
+
+        /// <summary>
+        /// Renames an existing notetrack, changing all it's keyframes
+        /// </summary>
+        /// <param name="ExistingNote">The existing name to change</param>
+        /// <param name="NewNote">The new notetrack name</param>
+        /// <returns>True on success, false on failure if the new name exists</returns>
+        public bool RenameNotetrack(string ExistingNote, string NewNote)
+        {
+            // Check if the new one exists
+            if (AnimationNotetracks.ContainsKey(NewNote))
+            {
+                // Failed, already exists
+                return false;
+            }
+            // Check if we have it
+            if (AnimationNotetracks.ContainsKey(ExistingNote))
+            {
+                // Grab keys
+                var tempKeys = AnimationNotetracks[ExistingNote];
+                // Remove it
+                AnimationNotetracks.Remove(ExistingNote);
+                // Add it back
+                AnimationNotetracks.Add(NewNote, tempKeys);
+            }
+            // Worked
+            return true;
+        }
+
+        /// <summary>
+        /// Removes a bone and all existing keyframes for it
+        /// </summary>
+        /// <param name="BoneName">The bone name to remove</param>
+        public void RemoveBone(string BoneName)
+        {
+            // Check for and remove existing keyframes
+            if (AnimationPositionKeys.ContainsKey(BoneName))
+            {
+                // Remove
+                AnimationPositionKeys.Remove(BoneName);
+            }
+            if (AnimationRotationKeys.ContainsKey(BoneName))
+            {
+                // Remove
+                AnimationRotationKeys.Remove(BoneName);
+            }
+            if (AnimationScaleKeys.ContainsKey(BoneName))
+            {
+                // Remove
+                AnimationScaleKeys.Remove(BoneName);
+            }
+            // Check bone modifiers
+            if (AnimationBoneModifiers.ContainsKey(BoneName))
+            {
+                // Remove
+                AnimationBoneModifiers.Remove(BoneName);
+            }
+            // Check delta tag name
+            if (DeltaTagName == BoneName)
+            {
+                // Reset it
+                DeltaTagName = string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Renames a bone tag to a new name, changing all of the keys with it
+        /// </summary>
+        /// <param name="ExistingName">The existing bone name</param>
+        /// <param name="NewName">The new name to change it to</param>
+        /// <returns>True on success, false if the tag already exists</returns>
+        public bool RenameBone(string ExistingName, string NewName)
+        {
+            // Make sure the new name does NOT exist
+            var ExistingBones = Bones;
+            // Check
+            if (ExistingBones.Contains(NewName))
+            {
+                // Fail because the tag exists
+                return false;
+            }
+            // Prepare to rename the bone, checking for existing keys first
+            if (AnimationPositionKeys.ContainsKey(ExistingName))
+            {
+                // Grab the keys
+                var tempKeys = AnimationPositionKeys[ExistingName];
+                // Remove
+                AnimationPositionKeys.Remove(ExistingName);
+                // Add back
+                AnimationPositionKeys.Add(NewName, tempKeys);
+            }
+            if (AnimationRotationKeys.ContainsKey(ExistingName))
+            {
+                // Grab the keys
+                var tempKeys = AnimationRotationKeys[ExistingName];
+                // Remove
+                AnimationRotationKeys.Remove(ExistingName);
+                // Add back
+                AnimationRotationKeys.Add(NewName, tempKeys);
+            }
+            if (AnimationScaleKeys.ContainsKey(ExistingName))
+            {
+                // Grab the keys
+                var tempKeys = AnimationScaleKeys[ExistingName];
+                // Remove
+                AnimationScaleKeys.Remove(ExistingName);
+                // Add back
+                AnimationScaleKeys.Add(NewName, tempKeys);
+            }
+            // Check bone modifiers
+            if (AnimationBoneModifiers.ContainsKey(ExistingName))
+            {
+                // Grab value
+                var tempMod = AnimationBoneModifiers[ExistingName];
+                // Remove
+                AnimationBoneModifiers.Remove(ExistingName);
+                // Add back
+                AnimationBoneModifiers.Add(NewName, tempMod);   
+            }
+            // Check delta tag name
+            if (DeltaTagName == ExistingName)
+            {
+                // Rename
+                DeltaTagName = NewName;
+            }
+            // Worked
+            return true;
+        }
+
+        #endregion
 
         #region Reading
 
@@ -508,7 +664,7 @@ namespace SELib
         /// Reads a SEAnim file, following the current specification
         /// </summary>
         /// <param name="FileName">The file name to open</param>
-        /// <returns></returns>
+        /// <returns>A SEAnim if successful, otherwise throws an error and returns null</returns>
         public static SEAnim Read(string FileName)
         {
             // Proxy off
@@ -1016,6 +1172,110 @@ namespace SELib
             {
                 // Add it
                 AnimationBoneModifiers.Add(Bone, Modifier);
+            }
+        }
+
+        #endregion
+
+        #region Removing Keys
+
+        /// <summary>
+        /// Remove a specific keyframe from a bone
+        /// </summary>
+        /// <param name="Bone">The bone name to remove the key from</param>
+        /// <param name="Frame">The frame of which to remove</param>
+        public void RemoveTranslationKey(string Bone, int Frame)
+        {
+            // Make sure bone exists first
+            if (AnimationPositionKeys.ContainsKey(Bone))
+            {
+                // It exists, loop and check for the key
+                for (int i = 0; i < AnimationPositionKeys[Bone].Count; i++)
+                {
+                    // Check
+                    if (AnimationPositionKeys[Bone][i].Frame == Frame)
+                    {
+                        // Remove and end
+                        AnimationPositionKeys[Bone].RemoveAt(i);
+                        // End
+                        break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Remove a specific keyframe from a bone
+        /// </summary>
+        /// <param name="Bone">The bone name to remove the key from</param>
+        /// <param name="Frame">The frame of which to remove</param>
+        public void RemoveRotationKey(string Bone, int Frame)
+        {
+            // Make sure bone exists first
+            if (AnimationRotationKeys.ContainsKey(Bone))
+            {
+                // It exists, loop and check for the key
+                for (int i = 0; i < AnimationRotationKeys[Bone].Count; i++)
+                {
+                    // Check
+                    if (AnimationRotationKeys[Bone][i].Frame == Frame)
+                    {
+                        // Remove and end
+                        AnimationRotationKeys[Bone].RemoveAt(i);
+                        // End
+                        break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Remove a specific keyframe from a bone
+        /// </summary>
+        /// <param name="Bone">The bone name to remove the key from</param>
+        /// <param name="Frame">The frame of which to remove</param>
+        public void RemoveScaleKey(string Bone, int Frame)
+        {
+            // Make sure bone exists first
+            if (AnimationScaleKeys.ContainsKey(Bone))
+            {
+                // It exists, loop and check for the key
+                for (int i = 0; i < AnimationScaleKeys[Bone].Count; i++)
+                {
+                    // Check
+                    if (AnimationScaleKeys[Bone][i].Frame == Frame)
+                    {
+                        // Remove and end
+                        AnimationScaleKeys[Bone].RemoveAt(i);
+                        // End
+                        break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Remove a specific notification frame
+        /// </summary>
+        /// <param name="Notification">The notetrack name to remove the key from</param>
+        /// <param name="Frame">The frame of which to remove</param>
+        public void RemoveNotetrack(string Notification, int Frame)
+        {
+            // Make sure notification exists
+            if (AnimationNotetracks.ContainsKey(Notification))
+            {
+                // Exists, loop and check for key
+                for (int i = 0; i < AnimationNotetracks[Notification].Count; i++)
+                {
+                    // Check
+                    if (AnimationNotetracks[Notification][i].Frame == Frame)
+                    {
+                        // Remove and end
+                        AnimationNotetracks[Notification].RemoveAt(i);
+                        // End
+                        break;
+                    }
+                }
             }
         }
 

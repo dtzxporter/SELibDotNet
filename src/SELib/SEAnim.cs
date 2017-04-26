@@ -408,6 +408,15 @@ namespace SELib
                 {
                     BoneNames.Add(readFile.ReadNullTermString());
                 }
+                // If we're delta, set delta name
+                if (anim.AnimType == AnimationType.Delta)
+                {
+                    // Set it
+                    if (BoneNames.Count > 0)
+                    {
+                        anim.DeltaTagName = BoneNames[0];
+                    }
+                }
                 // Loop and read bone modifiers
                 for (int i = 0; i < NumMods; i++)
                 {

@@ -1327,6 +1327,14 @@ namespace SELib
                     BoneMap.Add(Bone);
                 }
             }
+            foreach (string Bone in AnimationBoneModifiers.Keys)
+            {
+                // Add it, we don't care if it fails
+                if (!BoneMap.Contains(Bone))
+                {
+                    BoneMap.Add(Bone);
+                }
+            }
 
             #endregion
             // Check delta tag
@@ -1437,6 +1445,11 @@ namespace SELib
                 UniqueBoneNames.Add(Bone);
             }
             foreach (string Bone in AnimationScaleKeys.Keys)
+            {
+                // Add it, we don't care if it fails
+                UniqueBoneNames.Add(Bone);
+            }
+            foreach (string Bone in AnimationBoneModifiers.Keys)
             {
                 // Add it, we don't care if it fails
                 UniqueBoneNames.Add(Bone);

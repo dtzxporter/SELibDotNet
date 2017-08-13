@@ -16,36 +16,6 @@ using System.Threading.Tasks;
 
 namespace SELib
 {
-    #region Math Containers
-
-    /// <summary>
-    /// Generic interface for all key data
-    /// </summary>
-    public interface KeyData
-    {
-        // A generic interface for a container
-    }
-
-    /// <summary>
-    /// A container for a vector (Normalized)
-    /// </summary>
-    public class Vector3 : KeyData
-    {
-        public double X { get; set; }
-        public double Y { get; set; }
-        public double Z { get; set; }
-    }
-
-    /// <summary>
-    /// A container for a quaternion rotation (Normalized)
-    /// </summary>
-    public class Quaternion : Vector3
-    {
-        public double W { get; set; }
-    }
-
-    #endregion
-
     #region SEAnim Enums
 
     /// <summary>
@@ -74,7 +44,7 @@ namespace SELib
     /// <summary>
     /// Specifies the data present for each frame of every bone (Internal use only, matches specification v1.0.1)
     /// </summary>
-    internal enum DataPresenceFlags : byte
+    internal enum SEAnim_DataPresenceFlags : byte
     {
         // These describe what type of keyframe data is present for the bones
         SEANIM_BONE_LOC = 1 << 0,
@@ -435,7 +405,7 @@ namespace SELib
 
                     {
                         // Check if we have translations
-                        if (Convert.ToBoolean(DataPresentFlags & (byte)DataPresenceFlags.SEANIM_BONE_LOC))
+                        if (Convert.ToBoolean(DataPresentFlags & (byte)SEAnim_DataPresenceFlags.SEANIM_BONE_LOC))
                         {
                             // We have translations, read count based on frame count
                             var NumTranslations = 0;
@@ -504,7 +474,7 @@ namespace SELib
 
                     {
                         // Check if we have rotations
-                        if (Convert.ToBoolean(DataPresentFlags & (byte)DataPresenceFlags.SEANIM_BONE_ROT))
+                        if (Convert.ToBoolean(DataPresentFlags & (byte)SEAnim_DataPresenceFlags.SEANIM_BONE_ROT))
                         {
                             // We have rotations, read count based on frame count
                             var NumRotations = 0;
@@ -575,7 +545,7 @@ namespace SELib
 
                     {
                         // Check if we have scales
-                        if (Convert.ToBoolean(DataPresentFlags & (byte)DataPresenceFlags.SEANIM_BONE_SCALE))
+                        if (Convert.ToBoolean(DataPresentFlags & (byte)SEAnim_DataPresenceFlags.SEANIM_BONE_SCALE))
                         {
                             // We have scales, read count based on frame count
                             var NumScales = 0;
@@ -704,6 +674,7 @@ namespace SELib
                 writeFile.Write((byte)AnimType);
                 // Write flags (Looped is the only flag for now)
                 writeFile.Write((byte)(Looping ? (1 << 0) : 0));
+
                 // Build data present flags
                 {
                     // Buffer
@@ -711,32 +682,36 @@ namespace SELib
                     // Check for translations
                     if (AnimationPositionKeys.Count > 0)
                     {
-                        DataPresentFlags |= (byte)DataPresenceFlags.SEANIM_BONE_LOC;
+                        DataPresentFlags |= (byte)SEAnim_DataPresenceFlags.SEANIM_BONE_LOC;
                     }
                     // Check for rotations
                     if (AnimationRotationKeys.Count > 0)
                     {
-                        DataPresentFlags |= (byte)DataPresenceFlags.SEANIM_BONE_ROT;
+                        DataPresentFlags |= (byte)SEAnim_DataPresenceFlags.SEANIM_BONE_ROT;
                     }
                     // Check for scales
                     if (AnimationScaleKeys.Count > 0)
                     {
-                        DataPresentFlags |= (byte)DataPresenceFlags.SEANIM_BONE_SCALE;
+                        DataPresentFlags |= (byte)SEAnim_DataPresenceFlags.SEANIM_BONE_SCALE;
                     }
                     // Check for notetracks
                     if (AnimationNotetracks.Count > 0)
                     {
-                        DataPresentFlags |= (byte)DataPresenceFlags.SEANIM_PRESENCE_NOTE;
+                        DataPresentFlags |= (byte)SEAnim_DataPresenceFlags.SEANIM_PRESENCE_NOTE;
                     }
                     // Write it
                     writeFile.Write((byte)DataPresentFlags);
                 }
+
                 // Write data property flags (Precision is the only one for now)
                 writeFile.Write((byte)(HighPrecision ? (1 << 0) : 0));
+
                 // Write reserved bytes
                 writeFile.Write(new byte[2] { 0x0, 0x0 });
+
                 // Write framerate
                 writeFile.Write((float)FrameRate);
+
                 // The framecount buffer
                 int FrameCountBuffer = FrameCount;
                 // The bonecount buffer
@@ -749,10 +724,13 @@ namespace SELib
                 writeFile.Write((int)BoneCountBuffer);
                 // Write modifier count
                 writeFile.Write((byte)AnimationBoneModifiers.Count);
+
                 // Write 3 reserved bytes
                 writeFile.Write(new byte[3] { 0x0, 0x0, 0x0 });
+
                 // Write notification count
                 writeFile.Write((int)NotificationBuffer);
+
                 // Build unique tag data, in the order we need
                 {
                     // Get the bone tags in the order we need them

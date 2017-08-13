@@ -20,6 +20,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -28,6 +29,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -41,8 +43,12 @@
   <ItemGroup>
     <Compile Include="SEAnim.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SEModel.cs" />
     <Compile Include="Utilities\ExtendedBinaryReader.cs" />
     <Compile Include="Utilities\ExtendedBinaryWriter.cs" />
+    <Compile Include="Utilities\ExtendedMath.cs" />
+    <Compile Include="Utilities\Half.cs" />
+    <Compile Include="Utilities\HalfHelper.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

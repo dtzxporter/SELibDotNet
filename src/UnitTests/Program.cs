@@ -10,7 +10,7 @@ using SELib.Utilities;
 ///   Program.cs (Unit tests)
 ///   Author: DTZxPorter
 ///   Written for the SE Format Project
-///   Follows SEAnim specification v1.0.1
+///   Follows SEAnim specification v1.1
 ///   https://github.com/SE2Dev/SEAnim-Docs/blob/master/spec.md
 ///
 

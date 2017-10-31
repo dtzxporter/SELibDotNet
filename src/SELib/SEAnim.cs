@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 ///   SEAnim.cs
 ///   Author: DTZxPorter
 ///   Written for the SE Format Project
-///   Follows SEAnim specification v1.0.1
+///   Follows SEAnim specification v1.1
 ///   https://github.com/SE2Dev/SEAnim-Docs/blob/master/spec.md
 ///
 
@@ -410,12 +410,12 @@ namespace SELib
                             // We have translations, read count based on frame count
                             var NumTranslations = 0;
                             // Check framecount
-                            if ((NumFrames - 1) <= 0xFF)
+                            if (NumFrames <= 0xFF)
                             {
                                 // Read as byte
                                 NumTranslations = readFile.ReadByte();
                             }
-                            else if ((NumFrames - 1) <= 0xFFFF)
+                            else if (NumFrames <= 0xFFFF)
                             {
                                 // Read as ushort
                                 NumTranslations = readFile.ReadUInt16();
@@ -430,12 +430,12 @@ namespace SELib
                             {
                                 var KeyFrame = 0;
                                 // Check framecount
-                                if ((NumFrames - 1) <= 0xFF)
+                                if (NumFrames <= 0xFF)
                                 {
                                     // Read as byte
                                     KeyFrame = readFile.ReadByte();
                                 }
-                                else if ((NumFrames - 1) <= 0xFFFF)
+                                else if (NumFrames <= 0xFFFF)
                                 {
                                     // Read as ushort
                                     KeyFrame = readFile.ReadUInt16();
@@ -479,12 +479,12 @@ namespace SELib
                             // We have rotations, read count based on frame count
                             var NumRotations = 0;
                             // Check framecount
-                            if ((NumFrames - 1) <= 0xFF)
+                            if (NumFrames <= 0xFF)
                             {
                                 // Read as byte
                                 NumRotations = readFile.ReadByte();
                             }
-                            else if ((NumFrames - 1) <= 0xFFFF)
+                            else if (NumFrames <= 0xFFFF)
                             {
                                 // Read as ushort
                                 NumRotations = readFile.ReadUInt16();
@@ -499,12 +499,12 @@ namespace SELib
                             {
                                 var KeyFrame = 0;
                                 // Check framecount
-                                if ((NumFrames - 1) <= 0xFF)
+                                if (NumFrames <= 0xFF)
                                 {
                                     // Read as byte
                                     KeyFrame = readFile.ReadByte();
                                 }
-                                else if ((NumFrames - 1) <= 0xFFFF)
+                                else if (NumFrames <= 0xFFFF)
                                 {
                                     // Read as ushort
                                     KeyFrame = readFile.ReadUInt16();
@@ -550,12 +550,12 @@ namespace SELib
                             // We have scales, read count based on frame count
                             var NumScales = 0;
                             // Check framecount
-                            if ((NumFrames - 1) <= 0xFF)
+                            if (NumFrames <= 0xFF)
                             {
                                 // Read as byte
                                 NumScales = readFile.ReadByte();
                             }
-                            else if ((NumFrames - 1) <= 0xFFFF)
+                            else if (NumFrames <= 0xFFFF)
                             {
                                 // Read as ushort
                                 NumScales = readFile.ReadUInt16();
@@ -570,12 +570,12 @@ namespace SELib
                             {
                                 var KeyFrame = 0;
                                 // Check framecount
-                                if ((NumFrames - 1) <= 0xFF)
+                                if (NumFrames <= 0xFF)
                                 {
                                     // Read as byte
                                     KeyFrame = readFile.ReadByte();
                                 }
-                                else if ((NumFrames - 1) <= 0xFFFF)
+                                else if (NumFrames <= 0xFFFF)
                                 {
                                     // Read as ushort
                                     KeyFrame = readFile.ReadUInt16();
@@ -616,12 +616,12 @@ namespace SELib
                     // Get the keyframe for the notification based on the framecount
                     var KeyFrame = 0;
                     // Check framecount
-                    if ((NumFrames - 1) <= 0xFF)
+                    if (NumFrames <= 0xFF)
                     {
                         // Read as byte
                         KeyFrame = readFile.ReadByte();
                     }
-                    else if ((NumFrames - 1) <= 0xFFFF)
+                    else if (NumFrames <= 0xFFFF)
                     {
                         // Read as ushort
                         KeyFrame = readFile.ReadUInt16();
@@ -774,12 +774,12 @@ namespace SELib
                                 if (AnimationPositionKeys.ContainsKey(Bone))
                                 {
                                     // Check length of frames to write count
-                                    if ((FrameCountBuffer - 1) <= 0xFF)
+                                    if (FrameCountBuffer <= 0xFF)
                                     {
                                         // Write as byte
                                         writeFile.Write((byte)AnimationPositionKeys[Bone].Count);
                                     }
-                                    else if ((FrameCountBuffer - 1) <= 0xFFFF)
+                                    else if (FrameCountBuffer <= 0xFFFF)
                                     {
                                         // Write as short
                                         writeFile.Write((short)AnimationPositionKeys[Bone].Count);
@@ -793,12 +793,12 @@ namespace SELib
                                     foreach (SEAnimFrame Key in AnimationPositionKeys[Bone])
                                     {
                                         // Output frame number based on frame count
-                                        if ((FrameCountBuffer - 1) <= 0xFF)
+                                        if (FrameCountBuffer <= 0xFF)
                                         {
                                             // Write as byte
                                             writeFile.Write((byte)Key.Frame);
                                         }
-                                        else if ((FrameCountBuffer - 1) <= 0xFFFF)
+                                        else if (FrameCountBuffer <= 0xFFFF)
                                         {
                                             // Write as short
                                             writeFile.Write((short)Key.Frame);
@@ -826,12 +826,12 @@ namespace SELib
                                 else
                                 {
                                     // Check length of frames to write count (of 0 because no frames)
-                                    if ((FrameCountBuffer - 1) <= 0xFF)
+                                    if (FrameCountBuffer <= 0xFF)
                                     {
                                         // Write as byte
                                         writeFile.Write((byte)0x0);
                                     }
-                                    else if ((FrameCountBuffer - 1) <= 0xFFFF)
+                                    else if (FrameCountBuffer <= 0xFFFF)
                                     {
                                         // Write as short
                                         writeFile.Write((short)0x0);
@@ -857,12 +857,12 @@ namespace SELib
                                 if (AnimationRotationKeys.ContainsKey(Bone))
                                 {
                                     // Check length of frames to write count
-                                    if ((FrameCountBuffer - 1) <= 0xFF)
+                                    if (FrameCountBuffer <= 0xFF)
                                     {
                                         // Write as byte
                                         writeFile.Write((byte)AnimationRotationKeys[Bone].Count);
                                     }
-                                    else if ((FrameCountBuffer - 1) <= 0xFFFF)
+                                    else if (FrameCountBuffer <= 0xFFFF)
                                     {
                                         // Write as short
                                         writeFile.Write((short)AnimationRotationKeys[Bone].Count);
@@ -876,12 +876,12 @@ namespace SELib
                                     foreach (SEAnimFrame Key in AnimationRotationKeys[Bone])
                                     {
                                         // Output frame number based on frame count
-                                        if ((FrameCountBuffer - 1) <= 0xFF)
+                                        if (FrameCountBuffer <= 0xFF)
                                         {
                                             // Write as byte
                                             writeFile.Write((byte)Key.Frame);
                                         }
-                                        else if ((FrameCountBuffer - 1) <= 0xFFFF)
+                                        else if (FrameCountBuffer <= 0xFFFF)
                                         {
                                             // Write as short
                                             writeFile.Write((short)Key.Frame);
@@ -911,12 +911,12 @@ namespace SELib
                                 else
                                 {
                                     // Check length of frames to write count (of 0 because no frames)
-                                    if ((FrameCountBuffer - 1) <= 0xFF)
+                                    if (FrameCountBuffer <= 0xFF)
                                     {
                                         // Write as byte
                                         writeFile.Write((byte)0x0);
                                     }
-                                    else if ((FrameCountBuffer - 1) <= 0xFFFF)
+                                    else if (FrameCountBuffer <= 0xFFFF)
                                     {
                                         // Write as short
                                         writeFile.Write((short)0x0);
@@ -942,12 +942,12 @@ namespace SELib
                                 if (AnimationScaleKeys.ContainsKey(Bone))
                                 {
                                     // Check length of frames to write count
-                                    if ((FrameCountBuffer - 1) <= 0xFF)
+                                    if (FrameCountBuffer <= 0xFF)
                                     {
                                         // Write as byte
                                         writeFile.Write((byte)AnimationScaleKeys[Bone].Count);
                                     }
-                                    else if ((FrameCountBuffer - 1) <= 0xFFFF)
+                                    else if (FrameCountBuffer <= 0xFFFF)
                                     {
                                         // Write as short
                                         writeFile.Write((short)AnimationScaleKeys[Bone].Count);
@@ -961,12 +961,12 @@ namespace SELib
                                     foreach (SEAnimFrame Key in AnimationScaleKeys[Bone])
                                     {
                                         // Output frame number based on frame count
-                                        if ((FrameCountBuffer - 1) <= 0xFF)
+                                        if (FrameCountBuffer <= 0xFF)
                                         {
                                             // Write as byte
                                             writeFile.Write((byte)Key.Frame);
                                         }
-                                        else if ((FrameCountBuffer - 1) <= 0xFFFF)
+                                        else if (FrameCountBuffer <= 0xFFFF)
                                         {
                                             // Write as short
                                             writeFile.Write((short)Key.Frame);
@@ -994,12 +994,12 @@ namespace SELib
                                 else
                                 {
                                     // Check length of frames to write count (of 0 because no frames)
-                                    if ((FrameCountBuffer - 1) <= 0xFF)
+                                    if (FrameCountBuffer <= 0xFF)
                                     {
                                         // Write as byte
                                         writeFile.Write((byte)0x0);
                                     }
-                                    else if ((FrameCountBuffer - 1) <= 0xFFFF)
+                                    else if (FrameCountBuffer <= 0xFFFF)
                                     {
                                         // Write as short
                                         writeFile.Write((short)0x0);
@@ -1026,12 +1026,12 @@ namespace SELib
                         foreach (SEAnimFrame Key in Note.Value)
                         {
                             // Write the frame itself based on framecount
-                            if ((FrameCountBuffer - 1) <= 0xFF)
+                            if (FrameCountBuffer <= 0xFF)
                             {
                                 // Write as byte
                                 writeFile.Write((byte)Key.Frame);
                             }
-                            else if ((FrameCountBuffer - 1) <= 0xFFFF)
+                            else if (FrameCountBuffer <= 0xFFFF)
                             {
                                 // Write as short
                                 writeFile.Write((short)Key.Frame);

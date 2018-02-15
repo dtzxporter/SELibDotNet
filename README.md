@@ -10,5 +10,5 @@ A .NET library for reading and writing SE Format files
 ## Usage:
 
 - Download the latest version, add it as a reference to your .NET based project and start working with SE Formats
-- **Note:** SEAnim format uses CM for translations, a scale of 1.0 = default scaling, and rotations are XYZW. Please be sure to encode the input properly as there is no way for the library to determine otherwise!
+- **Note:** SEAnim format is unitless for translations, a scale of 1.0 = default scaling, and rotations are XYZW. Please be sure to encode the input properly as there is no way for the library to determine otherwise!
 - (Check out UnitTests for examples on using the library, everything has full documentation though.)

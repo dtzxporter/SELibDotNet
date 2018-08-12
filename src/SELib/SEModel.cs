@@ -19,30 +19,6 @@ namespace SELib
     #region SEModel Enums
 
     /// <summary>
-    /// Specified the type of model, this may be user implemented and is subject to change
-    /// </summary>
-    public enum ModelTypes : byte
-    {
-        /// <summary>
-        /// This model data is static geometry
-        /// </summary>
-        Static = 0,
-        /// <summary>
-        /// This model data is an animated model
-        /// </summary>
-        Dynamic = 1,
-        /// <summary>
-        /// This model data is used for collisions
-        /// </summary>
-        Collision = 2,
-
-        /// <summary>
-        /// This was an unknown model type value
-        /// </summary>
-        Unknown = 0xFF
-    }
-
-    /// <summary>
     /// Specifies what type of bone positioning to use in the model
     /// </summary>
     public enum ModelBoneSupportTypes : byte
@@ -70,16 +46,11 @@ namespace SELib
         SEMODEL_PRESENCE_BONE = 1 << 0,
         // Whether or not this model contains submesh blocks
         SEMODEL_PRESENCE_MESH = 1 << 1,
-        // Whether or not this model contains collision data blocks
-        SEMODEL_PRESENCE_COLLISION = 1 << 2,
+        // Whether or not this model contains inline material blocks
+        SEMODEL_PRESENCE_MATERIALS = 1 << 2,
 
-        // Whether or not this model contains a material reference block
-        SEMODEL_PRESENCE_MATERIALS = 1 << 3,
-
-        // RESERVED_0		= 1 << 4, // ALWAYS FALSE
-        // RESERVED_1		= 1 << 5, // ALWAYS FALSE
-        // RESERVED_2		= 1 << 6, // ALWAYS FALSE
-        // RESERVED_3		= 1 << 7, // ALWAYS FALSE
+        // The file contains a custom data block
+        SEMODEL_PRESENCE_CUSTOM = 1 << 7,
     }
 
     /// <summary>
@@ -87,19 +58,13 @@ namespace SELib
     /// </summary>
     internal enum SEModel_BoneDataPresenceFlags : byte
     {
-        // Whether or not bones contain global matricies
+        // Whether or not bones contain global-space matricies
         SEMODEL_PRESENCE_GLOBAL_MATRIX = 1 << 0,
-        // Whether or not bones contain local matricies
+        // Whether or not bones contain local-space matricies
         SEMODEL_PRESENCE_LOCAL_MATRIX = 1 << 1,
 
         // Whether or not bones contain scales
         SEMODEL_PRESENCE_SCALES = 1 << 2,
-
-        // RESERVED_0		= 1 << 3, // ALWAYS FALSE
-        // RESERVED_1		= 1 << 4, // ALWAYS FALSE
-        // RESERVED_2		= 1 << 5, // ALWAYS FALSE
-        // RESERVED_3		= 1 << 6, // ALWAYS FALSE
-        // RESERVED_4		= 1 << 7, // ALWAYS FALSE
     }
 
     /// <summary>
@@ -107,22 +72,17 @@ namespace SELib
     /// </summary>
     internal enum SEModel_MeshDataPresenceFlags : byte
     {
-        // Whether or not meshes contain at least 1 uv layer
+        // Whether or not meshes contain at least 1 uv map
         SEMODEL_PRESENCE_UVSET = 1 << 0,
 
         // Whether or not meshes contain vertex normals
         SEMODEL_PRESENCE_NORMALS = 1 << 1,
 
-        // Whether or not meshes contain vertex colors
+        // Whether or not meshes contain vertex colors (RGBA)
         SEMODEL_PRESENCE_COLOR = 1 << 2,
 
-        // Whether or not meshes contain at least 1 weight set
+        // Whether or not meshes contain at least 1 weighted skin
         SEMODEL_PRESENCE_WEIGHTS = 1 << 3,
-
-        // RESERVED_0		= 1 << 4, // ALWAYS FALSE
-        // RESERVED_1		= 1 << 5, // ALWAYS FALSE
-        // RESERVED_2		= 1 << 6, // ALWAYS FALSE
-        // RESERVED_3		= 1 << 7, // ALWAYS FALSE
     }
 
     #endregion
@@ -209,6 +169,10 @@ namespace SELib
         /// A list of faces in the mesh, faces match D3DPT_TRIANGLELIST (DirectX) and VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST (Vulkan)
         /// </summary>
         public List<SEModelFace> Faces { get; set; }
+        /// <summary>
+        /// A list of material indicies per each UVLayer, -1 indicates no material assigned...
+        /// </summary>
+        public List<int> MaterialReferenceIndicies { get; set; }
 
         /// <summary>
         /// Creates a new mesh with default settings
@@ -217,6 +181,7 @@ namespace SELib
         {
             Verticies = new List<SEModelVertex>();
             Faces = new List<SEModelFace>();
+            MaterialReferenceIndicies = new List<int>();
         }
 
         /// <summary>
@@ -236,6 +201,16 @@ namespace SELib
         {
             // Add new face
             Faces.Add(new SEModelFace(Index1, Index2, Index3));
+        }
+
+        /// <summary>
+        /// Adds a new material index
+        /// </summary>
+        /// <param name="Index">The index of the material in the model, or -1 for null</param>
+        public void AddMaterialIndex(int Index)
+        {
+            // Add new index
+            MaterialReferenceIndicies.Add(Index);
         }
     }
 
@@ -277,7 +252,7 @@ namespace SELib
         /// <summary>
         /// The uv sets for this vertex
         /// </summary>
-        public List<SEModelUVSet> UVSets { get; set; }
+        public List<Vector2> UVSets { get; set; }
 
         /// <summary>
         /// The vertex normal
@@ -299,7 +274,7 @@ namespace SELib
         public SEModelVertex()
         {
             Position = Vector3.Zero;
-            UVSets = new List<SEModelUVSet>();
+            UVSets = new List<Vector2>();
             VertexNormal = Vector3.Zero;
             VertexColor = Color.White;
             Weights = new List<SEModelWeight>();
@@ -342,6 +317,29 @@ namespace SELib
 
     #endregion
 
+    #region SEModel Material
+
+    public class SEModelMaterial
+    {
+        /// <summary>
+        /// The name of the material
+        /// </summary>
+        public string Name { get; set; }
+        /// <summary>
+        /// The material data, determined by type
+        /// </summary>
+        public object MaterialData { get; set; }
+    }
+
+    public class SEModelSimpleMaterial
+    {
+        public string DiffuseMap { get; set; }
+        public string NormalMap { get; set; }
+        public string SpecularMap { get; set; }
+    }
+
+    #endregion
+
     /// <summary>
     /// Represents a SEModel file, allows for reading and writing model data
     /// </summary>
@@ -357,6 +355,10 @@ namespace SELib
         /// A list of meshes, in order
         /// </summary>
         public List<SEModelMesh> Meshes { get; private set; }
+        /// <summary>
+        /// A list of materials, in order
+        /// </summary>
+        public List<SEModelMaterial> Materials { get; private set; }
 
         /// <summary>
         /// Gets the SEModel specification version this library supports
@@ -365,10 +367,6 @@ namespace SELib
 
         /* Model properties */
 
-        /// <summary>
-        /// The model type for this model
-        /// </summary>
-        public ModelTypes ModelType { get; set; }
         /// <summary>
         /// Specifies what data the model should use when using bones, defaults to local matricies.
         /// </summary>
@@ -397,6 +395,7 @@ namespace SELib
         {
             Bones = new List<SEModelBone>();
             Meshes = new List<SEModelMesh>();
+            Materials = new List<SEModelMaterial>();
             ModelBoneSupport = ModelBoneSupportTypes.SupportsLocals;
             ModelFlags = 0;
             MaxSkinInfluence = 4;
@@ -412,303 +411,7 @@ namespace SELib
         /// <param name="Stream">The file stream to write to</param>
         public void Write(Stream Stream)
         {
-            // Open up a binary writer
-            using (ExtendedBinaryWriter writeFile = new ExtendedBinaryWriter(Stream))
-            {
-                // Write magic
-                writeFile.Write(new char[] { 'S', 'E', 'M', 'o', 'd', 'e', 'l' });
-                // Write version
-                writeFile.Write((short)0x1);
-                // Write header size
-                writeFile.Write((short)0x1C);
-                // Write model type
-                writeFile.Write((byte)ModelType);
-                // Write model flags, implemtation defined
-                writeFile.Write((ushort)ModelFlags);
-                // Build data present flags
-                {
-                    // Buffer
-                    byte DataPresentFlags = 0x0;
-                    // Check for bones
-                    if (Bones.Count > 0)
-                    {
-                        DataPresentFlags |= (byte)SEModel_DataPresenceFlags.SEMODEL_PRESENCE_BONE;
-                    }
-                    // Check for meshes
-                    if (Meshes.Count > 0)
-                    {
-                        DataPresentFlags |= (byte)SEModel_DataPresenceFlags.SEMODEL_PRESENCE_MESH;
-                    }
-                    // TODO: Collision data present flags go here
-
-                    // Check for materials
-
-                    // Write it
-                    writeFile.Write((byte)DataPresentFlags);
-                }
-
-                // Flags for use when writing bone data to the buffer
-                bool HasScales = false;
-
-                // Build bone data present flags
-                {
-                    // Buffer
-                    byte BoneDataPresentFlags = 0x0;
-
-                    // Only test / apply if we have bones
-                    if (Bones.Count > 0)
-                    {
-                        // Iterate over the bones
-                        foreach (var Bone in Bones)
-                        {
-                            // Check for scales
-                            if (Bone.Scale != Vector3.One) { HasScales = true; break; }
-                        }
-
-                        // Apply scales
-                        if (HasScales) { BoneDataPresentFlags |= (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_SCALES; }
-
-                        // Apply globals
-                        if (ModelBoneSupport == ModelBoneSupportTypes.SupportsGlobals || ModelBoneSupport == ModelBoneSupportTypes.SupportsBoth) { BoneDataPresentFlags |= (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_GLOBAL_MATRIX; }
-                        // Apply locals
-                        if (ModelBoneSupport == ModelBoneSupportTypes.SupportsLocals || ModelBoneSupport == ModelBoneSupportTypes.SupportsBoth) { BoneDataPresentFlags |= (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_LOCAL_MATRIX; }
-                    }
-
-                    // Write it
-                    writeFile.Write((byte)BoneDataPresentFlags);
-                }
-
-                // TODO: Auto average weights when a vertex has > max influences!
-
-                // Flags for use when writing mesh data to the buffer
-                bool HasUVSets = false;
-                bool HasNormals = false;
-                bool HasColor = false;
-                bool HasWeights = false;
-
-                // Build mesh data present flags
-                {
-                    // Buffer
-                    byte MeshDataPresentFlags = 0x0;
-
-                    // Only test / apply if we have bones
-                    if (Meshes.Count > 0)
-                    {
-                        // Iterate over meshes
-                        Parallel.ForEach<SEModelMesh>(Meshes, (mesh, LoopState) =>
-                        {
-                            // Iterate verticies
-                            foreach (var Vertex in mesh.Verticies)
-                            {
-                                // Check for UVSets
-                                if (Vertex.UVSetCount > 0) { HasUVSets = true; }
-                                // Check for normals
-                                if (Vertex.VertexNormal != Vector3.Zero) { HasNormals = true; }
-                                // Check for color
-                                if (Vertex.VertexColor != Color.White) { HasColor = true; }
-                                // Check for weights
-                                if (Vertex.WeightCount > 0) { HasWeights = true; }
-
-                                // Has all break
-                                if (HasUVSets && HasNormals && HasColor && HasWeights) { LoopState.Break(); }
-                            }
-                        });
-                    }
-
-                    // Apply UV
-                    if (HasUVSets) { MeshDataPresentFlags |= (byte)SEModel_MeshDataPresenceFlags.SEMODEL_PRESENCE_UVSET; }
-                    // Apply normals
-                    if (HasNormals) { MeshDataPresentFlags |= (byte)SEModel_MeshDataPresenceFlags.SEMODEL_PRESENCE_NORMALS; }
-                    // Apply color
-                    if (HasColor) { MeshDataPresentFlags |= (byte)SEModel_MeshDataPresenceFlags.SEMODEL_PRESENCE_COLOR; }
-                    // Apply weights
-                    if (HasWeights) { MeshDataPresentFlags |= (byte)SEModel_MeshDataPresenceFlags.SEMODEL_PRESENCE_WEIGHTS; }
-
-                    // Write it
-                    writeFile.Write((byte)MeshDataPresentFlags);
-                }
-
-                // Write reserved bytes
-                writeFile.Write(new byte[2] { 0x0, 0x0 });
-
-                // Write bone count
-                writeFile.Write((uint)Bones.Count);
-                // Write mesh count
-                writeFile.Write((uint)Meshes.Count);
-                // Write collision count
-                writeFile.Write((uint)0x0);
-                // Write material count
-                writeFile.Write((uint)0x0);
-
-                // Write max skin influence
-                writeFile.Write((Meshes.Count > 0) ? (byte)MaxSkinInfluence : (byte)0);
-
-                // Write 3 reserved bytes
-                writeFile.Write(new byte[3] { 0x0, 0x0, 0x0 });
-
-                // Prepare to write bone data
-                {
-                    // Loop and write tag names
-                    foreach (var Bone in Bones)
-                    {
-                        writeFile.WriteNullTermString(Bone.BoneName);
-                    }
-                    // Loop and write data
-                    foreach (var Bone in Bones)
-                    {
-                        // Write flags, 0 for now
-                        writeFile.Write((byte)0x0);
-                        // Write parent
-                        writeFile.Write((int)Bone.BoneParent);
-
-                        // Check presence flags and write matricies
-                        // Globals are before locals, position before rotation
-
-                        if (ModelBoneSupport == ModelBoneSupportTypes.SupportsGlobals || ModelBoneSupport == ModelBoneSupportTypes.SupportsBoth)
-                        {
-                            writeFile.Write((float)Bone.GlobalPosition.X);
-                            writeFile.Write((float)Bone.GlobalPosition.Y);
-                            writeFile.Write((float)Bone.GlobalPosition.Z);
-
-                            writeFile.Write((float)Bone.GlobalRotation.X);
-                            writeFile.Write((float)Bone.GlobalRotation.Y);
-                            writeFile.Write((float)Bone.GlobalRotation.Z);
-                            writeFile.Write((float)Bone.GlobalRotation.W);
-                        }
-
-                        if (ModelBoneSupport == ModelBoneSupportTypes.SupportsLocals || ModelBoneSupport == ModelBoneSupportTypes.SupportsBoth)
-                        {
-                            writeFile.Write((float)Bone.LocalPosition.X);
-                            writeFile.Write((float)Bone.LocalPosition.Y);
-                            writeFile.Write((float)Bone.LocalPosition.Z);
-
-                            writeFile.Write((float)Bone.LocalRotation.X);
-                            writeFile.Write((float)Bone.LocalRotation.Y);
-                            writeFile.Write((float)Bone.LocalRotation.Z);
-                            writeFile.Write((float)Bone.LocalRotation.W);
-                        }
-
-                        // Check scale flags
-                        if (HasScales)
-                        {
-                            writeFile.Write((float)Bone.Scale.X);
-                            writeFile.Write((float)Bone.Scale.Y);
-                            writeFile.Write((float)Bone.Scale.Z);
-                        }
-                    }
-                }
-
-                // Prepare to write mesh data
-                {
-                    // Loop and write data
-                    foreach (var Mesh in Meshes)
-                    {
-                        // Write flags, 0 for now
-                        writeFile.Write((byte)0x0);
-
-                        // Write UVSetCount
-                        writeFile.Write((byte)0x0);
-                        
-                        // Write vertex count
-                        writeFile.Write((uint)Mesh.VertexCount);
-                        // Write face count
-                        writeFile.Write((uint)Mesh.FaceCount);
-
-                        // Loop and write verticies
-                        foreach (var Vertex in Mesh.Verticies)
-                        {
-                            // Position
-                            writeFile.Write((float)Vertex.Position.X);
-                            writeFile.Write((float)Vertex.Position.Y);
-                            writeFile.Write((float)Vertex.Position.Z);
-
-                            // UVSets if we have any
-                            if (HasUVSets)
-                            {
-                                // Write coords
-                                foreach (var UV in Vertex.UVSets)
-                                {
-                                    writeFile.Write((float)UV.UVCoord.X);
-                                    writeFile.Write((float)UV.UVCoord.Y);
-                                }
-                                // Write indicies
-                                foreach (var UV in Vertex.UVSets)
-                                {
-                                    writeFile.Write((uint)UV.MaterialIndex);
-                                }
-                            }
-
-                            // Normals if we have any
-                            if (HasNormals)
-                            {
-                                // Write normals (halfs)
-                                writeFile.Write((ushort)HalfHelper.SingleToHalf((float)Vertex.VertexNormal.X).value);
-                                writeFile.Write((ushort)HalfHelper.SingleToHalf((float)Vertex.VertexNormal.Y).value);
-                                writeFile.Write((ushort)HalfHelper.SingleToHalf((float)Vertex.VertexNormal.Z).value);
-                            }
-
-                            // Colors if we have any
-                            if (HasColor)
-                            {
-                                // Write RGBA
-                                writeFile.Write((byte)Vertex.VertexColor.R);
-                                writeFile.Write((byte)Vertex.VertexColor.G);
-                                writeFile.Write((byte)Vertex.VertexColor.B);
-                                writeFile.Write((byte)Vertex.VertexColor.A);
-                            }
-
-                            // Weights if we have any
-                            if (HasWeights)
-                            {
-                                // Write indicies
-                                foreach (var Weight in Vertex.Weights)
-                                {
-                                    // Write it, depends on bone count
-                                    if (BoneCount <= 0xFF)
-                                    {
-                                        // Write as byte
-                                        writeFile.Write((byte)Weight.BoneIndex);
-                                    }
-                                    else if (BoneCount <= 0xFFFF)
-                                    {
-                                        // Write as short
-                                        writeFile.Write((ushort)Weight.BoneIndex);
-                                    }
-                                    else
-                                    {
-                                        // Write as integer
-                                        writeFile.Write((uint)Weight.BoneIndex);
-                                    }
-                                }
-                                // Write values
-                                foreach (var Weight in Vertex.Weights)
-                                {
-                                    // Write as half
-                                    writeFile.Write((ushort)HalfHelper.SingleToHalf((float)Weight.BoneWeight).value);
-                                }
-                            }
-                        }
-
-                        // Loop and write faces
-                        foreach (var Face in Mesh.Faces)
-                        {
-                            writeFile.Write((uint)Face.FaceIndex1);
-                            writeFile.Write((uint)Face.FaceIndex2);
-                            writeFile.Write((uint)Face.FaceIndex3);
-                        }
-                    }
-                }
-
-                // TODO: Collision data goes here, if any
-                {
-
-                }
-
-                // Prepare to write material data
-                {
-
-                }
-            }
+            // TODO: Write logic again with new spec
         }
 
         /// <summary>
@@ -719,6 +422,235 @@ namespace SELib
         {
             // Proxy off
             Write(File.Create(FileName));
+        }
+
+        #endregion
+
+        #region Reading
+
+        /// <summary>
+        /// Reads a SEAnim from a stream
+        /// </summary>
+        /// <param name="Stream">The stream to read from</param>
+        /// <returns>A SEAnim if successful, otherwise throws an error and returns null</returns>
+        public static SEModel Read(Stream Stream)
+        {
+            // Create a new model
+            var model = new SEModel();
+            // Setup a new reader
+            using (ExtendedBinaryReader readFile = new ExtendedBinaryReader(Stream))
+            {
+                // Magic
+                var Magic = readFile.ReadChars(7);
+                // Version
+                var Version = readFile.ReadInt16();
+                // Header size
+                var HeaderSize = readFile.ReadInt16();
+                // Check magic
+                if (!Magic.SequenceEqual(new char[] { 'S', 'E', 'M', 'o', 'd', 'e', 'l' }))
+                {
+                    // Bad file
+                    throw new Exception("Bad SEModel file, magic was invalid");
+                }
+                // Data present flags
+                var DataPresentFlags = readFile.ReadByte();
+                // Bone data present flags
+                var BoneDataPresentFlags = readFile.ReadByte();
+                // Mesh data present flags
+                var MeshDataPresentFlags = readFile.ReadByte();
+
+                // Set rolling flags for bone data
+                if (Convert.ToBoolean(BoneDataPresentFlags & (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_GLOBAL_MATRIX) 
+                    && Convert.ToBoolean(BoneDataPresentFlags & (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_LOCAL_MATRIX))
+                {
+                    model.ModelBoneSupport = ModelBoneSupportTypes.SupportsBoth;
+                }
+                else if (Convert.ToBoolean(BoneDataPresentFlags & (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_GLOBAL_MATRIX))
+                {
+                    model.ModelBoneSupport = ModelBoneSupportTypes.SupportsGlobals;
+                }
+                else if (Convert.ToBoolean(BoneDataPresentFlags & (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_LOCAL_MATRIX))
+                {
+                    model.ModelBoneSupport = ModelBoneSupportTypes.SupportsLocals;
+                }
+
+                // Read counts
+                var BoneCount = readFile.ReadInt32();
+                var MeshCount = readFile.ReadInt32();
+                var MatCount = readFile.ReadInt32();
+
+                // Skip 3 reserved bytes
+                readFile.BaseStream.Position += 3;
+
+                // Read bone tag names
+                List<string> BoneNames = new List<string>();
+                // Loop
+                for (int i = 0; i < BoneCount; i++)
+                {
+                    BoneNames.Add(readFile.ReadNullTermString());
+                }
+
+                // Loop and read bones
+                for (int i = 0; i < BoneCount; i++)
+                {
+                    // Read bone flags (unused)
+                    var BoneFlags = readFile.ReadByte();
+
+                    // Read bone index
+                    var ParentIndex = readFile.ReadInt32();
+
+                    // Check for global matricies
+                    Vector3 GlobalPosition = Vector3.Zero;
+                    Quaternion GlobalRotation = Quaternion.Identity;
+                    // Check
+                    if (Convert.ToBoolean(BoneDataPresentFlags & (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_GLOBAL_MATRIX))
+                    {
+                        GlobalPosition = new Vector3(readFile.ReadSingle(), readFile.ReadSingle(), readFile.ReadSingle());
+                        GlobalRotation = new Quaternion(readFile.ReadSingle(), readFile.ReadSingle(), readFile.ReadSingle(), readFile.ReadSingle());
+                    }
+
+                    // Check for local matricies
+                    Vector3 LocalPosition = Vector3.Zero;
+                    Quaternion LocalRotation = Quaternion.Identity;
+                    // Check
+                    if (Convert.ToBoolean(BoneDataPresentFlags & (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_LOCAL_MATRIX))
+                    {
+                        LocalPosition = new Vector3(readFile.ReadSingle(), readFile.ReadSingle(), readFile.ReadSingle());
+                        LocalRotation = new Quaternion(readFile.ReadSingle(), readFile.ReadSingle(), readFile.ReadSingle(), readFile.ReadSingle());
+                    }
+
+                    // Check for scales
+                    Vector3 Scale = Vector3.One;
+                    // Check
+                    if (Convert.ToBoolean(BoneDataPresentFlags & (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_SCALES))
+                    {
+                        Scale = new Vector3(readFile.ReadSingle(), readFile.ReadSingle(), readFile.ReadSingle());
+                    }
+
+                    // Add the bone
+                    model.AddBone(BoneNames[i], ParentIndex, GlobalPosition, GlobalRotation, LocalPosition, LocalRotation, Scale);
+                }
+
+                // Loop and read meshes
+                for (int i = 0; i < MeshCount; i++)
+                {
+                    // Make a new submesh
+                    var mesh = new SEModelMesh();
+
+                    // Read mesh flags (unused)
+                    var MeshFlags = readFile.ReadByte();
+
+                    // Read counts
+                    var MatIndiciesCount = readFile.ReadByte();
+                    var MaxSkinInfluenceCount = readFile.ReadByte();
+                    var VertexCount = readFile.ReadInt32();
+                    var FaceCount = readFile.ReadInt32();
+
+                    // Loop and read positions
+                    for (int v = 0; v < VertexCount; v++)
+                        mesh.AddVertex(new SEModelVertex() { Position = new Vector3(readFile.ReadSingle(), readFile.ReadSingle(), readFile.ReadSingle()) });
+
+                    // Read uvlayers
+                    if (Convert.ToBoolean(MeshDataPresentFlags & (byte)SEModel_MeshDataPresenceFlags.SEMODEL_PRESENCE_UVSET))
+                    {
+                        for (int v = 0; v < VertexCount; v++)
+                        {
+                            for (int l = 0; l < MatIndiciesCount; l++)
+                                mesh.Verticies[v].UVSets.Add(new Vector2(readFile.ReadSingle(), readFile.ReadSingle()));
+                        }
+                    }
+
+                    // Read normals
+                    if (Convert.ToBoolean(MeshDataPresentFlags & (byte)SEModel_MeshDataPresenceFlags.SEMODEL_PRESENCE_NORMALS))
+                    {
+                        // Loop and read vertex normals
+                        for (int v = 0; v < VertexCount; v++)
+                            mesh.Verticies[v].VertexNormal = new Vector3(readFile.ReadSingle(), readFile.ReadSingle(), readFile.ReadSingle());
+                    }
+
+                    // Read colors
+                    if (Convert.ToBoolean(MeshDataPresentFlags & (byte)SEModel_MeshDataPresenceFlags.SEMODEL_PRESENCE_COLOR))
+                    {
+                        // Loop and read colors
+                        for (int v = 0; v < VertexCount; v++)
+                            mesh.Verticies[v].VertexColor = new Color(readFile.ReadByte(), readFile.ReadByte(), readFile.ReadByte(), readFile.ReadByte());
+                    }
+
+                    // Read weights
+                    if (Convert.ToBoolean(MeshDataPresentFlags & (byte)SEModel_MeshDataPresenceFlags.SEMODEL_PRESENCE_WEIGHTS))
+                    {
+                        for (int v = 0; v < VertexCount; v++)
+                        {
+                            // Read IDs and Values
+                            for (int l = 0; l < MaxSkinInfluenceCount; l++)
+                            {
+                                if (BoneCount <= 0xFF)
+                                    mesh.Verticies[v].Weights.Add(new SEModelWeight() { BoneIndex = readFile.ReadByte(), BoneWeight = readFile.ReadSingle() });
+                                else if (BoneCount <= 0xFFFF)
+                                    mesh.Verticies[v].Weights.Add(new SEModelWeight() { BoneIndex = readFile.ReadUInt16(), BoneWeight = readFile.ReadSingle() });
+                                else
+                                    mesh.Verticies[v].Weights.Add(new SEModelWeight() { BoneIndex = readFile.ReadUInt32(), BoneWeight = readFile.ReadSingle() });
+                            }
+                        }
+                    }
+
+                    // Loop and read faces
+                    for (int f = 0; f < FaceCount; f++)
+                    {
+                        if (VertexCount <= 0xFF)
+                            mesh.AddFace(readFile.ReadByte(), readFile.ReadByte(), readFile.ReadByte());
+                        else if (VertexCount <= 0xFFFF)
+                            mesh.AddFace(readFile.ReadUInt16(), readFile.ReadUInt16(), readFile.ReadUInt16());
+                        else
+                            mesh.AddFace(readFile.ReadUInt32(), readFile.ReadUInt32(), readFile.ReadUInt32());
+                    }
+
+                    // Read material reference indicies
+                    for (int f = 0; f < MatIndiciesCount; f++)
+                        mesh.AddMaterialIndex(readFile.ReadInt32());
+
+                    // Add the mesh
+                    model.AddMesh(mesh);
+                }
+
+                // Loop and read materials
+                for (int m = 0; m < MatCount; m++)
+                {
+                    var mat = new SEModelMaterial();
+
+                    // Read the name
+                    mat.Name = readFile.ReadNullTermString();
+                    // Read IsSimpleMaterial
+                    var IsSimpleMaterial = readFile.ReadBoolean();
+
+                    // Read the material
+                    if (IsSimpleMaterial)
+                    {
+                        mat.MaterialData = new SEModelSimpleMaterial()
+                        {
+                            DiffuseMap = readFile.ReadNullTermString(),
+                            NormalMap = readFile.ReadNullTermString(),
+                            SpecularMap = readFile.ReadNullTermString()
+                        };
+                    }
+
+                    // Add the material
+                    model.AddMaterial(mat);
+                }
+            }
+            // Return result
+            return model;
+        }
+
+        /// <summary>
+        /// Reads a SEModel file, following the current specification
+        /// </summary>
+        /// <param name="FileName">The file name to open</param>
+        /// <returns>A SEModel if successful, otherwise throws an error and returns null</returns>
+        public static SEModel Read(string FileName)
+        {
+            // Proxy off
+            return Read(File.OpenRead(FileName));
         }
 
         #endregion
@@ -760,6 +692,16 @@ namespace SELib
         {
             // Add it
             Meshes.Add(Mesh);
+        }
+
+        /// <summary>
+        /// Adds the given material to the model
+        /// </summary>
+        /// <param name="Material">The material to add</param>
+        public void AddMaterial(SEModelMaterial Material)
+        {
+            // Add it
+            Materials.Add(Material);
         }
 
         #endregion

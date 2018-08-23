@@ -35,6 +35,9 @@ namespace SELib.Utilities
         {
             return X.GetHashCode() ^ Y.GetHashCode();
         }
+
+        public static readonly Vector2 Zero = new Vector2() { X = 0, Y = 0 };
+        public static readonly Vector2 One = new Vector2() { X = 1, Y = 1 };
     }
 
     /// <summary>
@@ -58,8 +61,8 @@ namespace SELib.Utilities
             return base.GetHashCode() ^ Z.GetHashCode();
         }
 
-        public static readonly Vector3 Zero = new Vector3() { X = 0, Y = 0, Z = 0 };
-        public static readonly Vector3 One = new Vector3() { X = 1, Y = 1, Z = 1 };
+        new public static readonly Vector3 Zero = new Vector3() { X = 0, Y = 0, Z = 0 };
+        new public static readonly Vector3 One = new Vector3() { X = 1, Y = 1, Z = 1 };
     }
 
     /// <summary>

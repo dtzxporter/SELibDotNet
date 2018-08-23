@@ -372,14 +372,6 @@ namespace SELib
         /// </summary>
         public ModelBoneSupportTypes ModelBoneSupport { get; set; }
         /// <summary>
-        /// Implementation defined flags for the model
-        /// </summary>
-        public ushort ModelFlags { get; set; }
-        /// <summary>
-        /// Gets or sets the maximum number of bones that can influence a skinned vertex, defaults to 4
-        /// </summary>
-        public byte MaxSkinInfluence { get; set; }
-        /// <summary>
         /// Returns the number of bones in this model, this is automatically updated
         /// </summary>
         public uint BoneCount { get { return (uint)Bones.Count; } }
@@ -387,6 +379,10 @@ namespace SELib
         /// Returns the number of meshes in this model, this is automatically updated
         /// </summary>
         public uint MeshCount { get { return (uint)Meshes.Count; } }
+        /// <summary>
+        /// Returns the number of materials in this model, this is automatically updated
+        /// </summary>
+        public uint MaterialCount { get { return (uint)Materials.Count; } }
 
         /// <summary>
         /// Creates a new SEModel using default settings
@@ -397,8 +393,6 @@ namespace SELib
             Meshes = new List<SEModelMesh>();
             Materials = new List<SEModelMaterial>();
             ModelBoneSupport = ModelBoneSupportTypes.SupportsLocals;
-            ModelFlags = 0;
-            MaxSkinInfluence = 4;
         }
 
         /* Functions and utilities */
@@ -411,7 +405,346 @@ namespace SELib
         /// <param name="Stream">The file stream to write to</param>
         public void Write(Stream Stream)
         {
-            // TODO: Write logic again with new spec
+            // Open up a binary writer
+            using (ExtendedBinaryWriter writeFile = new ExtendedBinaryWriter(Stream))
+            {
+                // Write magic
+                writeFile.Write(new char[] { 'S', 'E', 'M', 'o', 'd', 'e', 'l' });
+                // Write version
+                writeFile.Write((short)0x1);
+                // Write header size
+                writeFile.Write((short)0x14);
+
+                // Build data present flags
+                {
+                    // Buffer
+                    byte DataPresentFlags = 0x0;
+                    // Check for bones
+                    if (Bones.Count > 0)
+                    {
+                        DataPresentFlags |= (byte)SEModel_DataPresenceFlags.SEMODEL_PRESENCE_BONE;
+                    }
+                    // Check for meshes
+                    if (Meshes.Count > 0)
+                    {
+                        DataPresentFlags |= (byte)SEModel_DataPresenceFlags.SEMODEL_PRESENCE_MESH;
+                    }
+                    // Check for materials
+                    if (Materials.Count > 0)
+                    {
+                        DataPresentFlags |= (byte)SEModel_DataPresenceFlags.SEMODEL_PRESENCE_MATERIALS;
+                    }
+                    // Write it
+                    writeFile.Write((byte)DataPresentFlags);
+                }
+
+                // Dynamic properties
+                bool HasScales = false;
+
+                // Build bone data present flags
+                {
+                    // Buffer
+                    byte DataPresentFlags = 0x0;
+
+                    // Check for a scale not 1,1,1
+                    foreach (var Bone in Bones)
+                    {
+                        if (Bone.Scale != Vector3.One)
+                        {
+                            HasScales = true;
+                            break;
+                        }
+                    }
+
+                    // Check for bone rotations
+                    switch (this.ModelBoneSupport)
+                    {
+                        case ModelBoneSupportTypes.SupportsBoth:
+                            DataPresentFlags |= (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_GLOBAL_MATRIX;
+                            DataPresentFlags |= (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_LOCAL_MATRIX;
+                            break;
+                        case ModelBoneSupportTypes.SupportsGlobals:
+                            DataPresentFlags |= (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_GLOBAL_MATRIX;
+                            break;
+                        case ModelBoneSupportTypes.SupportsLocals:
+                            DataPresentFlags |= (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_LOCAL_MATRIX;
+                            break;
+                    }
+
+                    // Check for scales
+                    if (HasScales)
+                    {
+                        DataPresentFlags |= (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_SCALES;
+                    }
+
+                    // Write it
+                    writeFile.Write((byte)DataPresentFlags);
+                }
+
+                // Dynamic properties
+                bool HasNormals = false, HasColors = false;
+
+                // Build mesh data present flags
+                {
+                    // Buffer
+                    byte DataPresentFlags = 0x0;
+
+                    // Implied properties
+                    bool HasUVSet = false, HasWeights = false;
+
+                    // Check for non-default properties
+                    foreach (var Mesh in Meshes)
+                    {
+                        foreach (var Vertex in Mesh.Verticies)
+                        {
+                            if (Vertex.UVSets.Count > 0)
+                                HasUVSet = true;
+                            if (Vertex.Weights.Count > 0)
+                                HasWeights = true;
+                            if (Vertex.VertexColor != Color.White)
+                                HasColors = true;
+                            if (Vertex.VertexNormal != Vector3.Zero)
+                                HasNormals = true;
+
+                            // Check to end
+                            if (HasUVSet && HasWeights && HasNormals && HasColors)
+                                break;
+                        }
+
+                        // Check to end
+                        if (HasUVSet && HasWeights && HasNormals && HasColors)
+                            break;
+                    }
+
+                    // Check for UVSets
+                    if (HasUVSet)
+                    {
+                        DataPresentFlags |= (byte)SEModel_MeshDataPresenceFlags.SEMODEL_PRESENCE_UVSET;
+                    }
+                    // Check for normals
+                    if (HasNormals)
+                    {
+                        DataPresentFlags |= (byte)SEModel_MeshDataPresenceFlags.SEMODEL_PRESENCE_NORMALS;
+                    }
+                    // Check for colors
+                    if (HasColors)
+                    {
+                        DataPresentFlags |= (byte)SEModel_MeshDataPresenceFlags.SEMODEL_PRESENCE_COLOR;
+                    }
+                    // Check for weights
+                    if (HasWeights)
+                    {
+                        DataPresentFlags |= (byte)SEModel_MeshDataPresenceFlags.SEMODEL_PRESENCE_WEIGHTS;
+                    }
+
+                    // Write it
+                    writeFile.Write((byte)DataPresentFlags);
+                }
+
+                // The bonecount buffer
+                uint BoneCountBuffer = BoneCount;
+                // The meshcount buffer
+                uint MeshCountBuffer = MeshCount;
+                // The matcount buffer
+                uint MatCountBuffer = MaterialCount;
+
+                // Write count of bones
+                writeFile.Write((uint)BoneCountBuffer);
+                // Write count of meshes
+                writeFile.Write((uint)MeshCountBuffer);
+                // Write count of mats
+                writeFile.Write((uint)MatCountBuffer);
+
+                // Write 3 reserved bytes
+                writeFile.Write(new byte[3] { 0x0, 0x0, 0x0 });
+
+                // Write bone tagnames
+                foreach (var Bone in Bones)
+                    writeFile.WriteNullTermString(Bone.BoneName);
+
+                // Write bone data
+                foreach (var Bone in Bones)
+                {
+                    // Write bone flags
+                    writeFile.Write((byte)0x0);
+
+                    // Write parent index
+                    writeFile.Write((int)Bone.BoneParent);
+
+                    // Write global matrix
+                    if (ModelBoneSupport == ModelBoneSupportTypes.SupportsGlobals || ModelBoneSupport == ModelBoneSupportTypes.SupportsBoth)
+                    {
+                        writeFile.Write((float)Bone.GlobalPosition.X);
+                        writeFile.Write((float)Bone.GlobalPosition.Y);
+                        writeFile.Write((float)Bone.GlobalPosition.Z);
+                        writeFile.Write((float)Bone.GlobalRotation.X);
+                        writeFile.Write((float)Bone.GlobalRotation.Y);
+                        writeFile.Write((float)Bone.GlobalRotation.Z);
+                        writeFile.Write((float)Bone.GlobalRotation.W);
+                    }
+
+                    // Write local matrix
+                    if (ModelBoneSupport == ModelBoneSupportTypes.SupportsLocals || ModelBoneSupport == ModelBoneSupportTypes.SupportsBoth)
+                    {
+                        writeFile.Write((float)Bone.LocalPosition.X);
+                        writeFile.Write((float)Bone.LocalPosition.Y);
+                        writeFile.Write((float)Bone.LocalPosition.Z);
+                        writeFile.Write((float)Bone.LocalRotation.X);
+                        writeFile.Write((float)Bone.LocalRotation.Y);
+                        writeFile.Write((float)Bone.LocalRotation.Z);
+                        writeFile.Write((float)Bone.LocalRotation.W);
+                    }
+
+                    // Write scales
+                    if (HasScales)
+                    {
+                        writeFile.Write((float)Bone.Scale.X);
+                        writeFile.Write((float)Bone.Scale.Y);
+                        writeFile.Write((float)Bone.Scale.Z);
+                    }
+                }
+
+                // Write mesh data
+                foreach (var Mesh in Meshes)
+                {
+                    // Write mesh flags
+                    writeFile.Write((byte)0x0);
+
+                    // Buffers for counts
+                    byte MatIndiciesCount = 0, MaxSkinInfluence = 0;
+                    int VertexCount = Mesh.Verticies.Count, FaceCount = Mesh.Faces.Count;
+
+                    // Iterate and calculate indicies
+                    foreach (var Vertex in Mesh.Verticies)
+                    {
+                        if (Vertex.UVSets.Count > MatIndiciesCount)
+                            MatIndiciesCount = (byte)Vertex.UVSets.Count;
+                        if (Vertex.Weights.Count > MaxSkinInfluence)
+                            MaxSkinInfluence = (byte)Vertex.Weights.Count;
+                    }
+
+                    // Write material indicies
+                    writeFile.Write((byte)MatIndiciesCount);
+                    // Write max skin influence
+                    writeFile.Write((byte)MaxSkinInfluence);
+                    // Write vertex count
+                    writeFile.Write((int)VertexCount);
+                    // Write face count
+                    writeFile.Write((int)FaceCount);
+
+                    // Write positions
+                    foreach (var Vertex in Mesh.Verticies)
+                    {
+                        writeFile.Write((float)Vertex.Position.X);
+                        writeFile.Write((float)Vertex.Position.Y);
+                        writeFile.Write((float)Vertex.Position.Z);
+                    }
+
+                    // Write uvlayers
+                    foreach (var Vertex in Mesh.Verticies)
+                    {
+                        for (int i = 0; i < MatIndiciesCount; i++)
+                        {
+                            var Layer = (i < Vertex.UVSets.Count) ? Vertex.UVSets[i] : Vector2.Zero;
+
+                            // Write it
+                            writeFile.Write((float)Layer.X);
+                            writeFile.Write((float)Layer.Y);
+                        }
+                    }
+
+                    // Write normals
+                    if (HasNormals)
+                    {
+                        foreach (var Vertex in Mesh.Verticies)
+                        {
+                            writeFile.Write((float)Vertex.VertexNormal.X);
+                            writeFile.Write((float)Vertex.VertexNormal.Y);
+                            writeFile.Write((float)Vertex.VertexNormal.Z);
+                        }
+                    }
+
+                    // Write colors
+                    if (HasColors)
+                    {
+                        foreach (var Vertex in Mesh.Verticies)
+                        {
+                            writeFile.Write((byte)Vertex.VertexColor.R);
+                            writeFile.Write((byte)Vertex.VertexColor.G);
+                            writeFile.Write((byte)Vertex.VertexColor.B);
+                            writeFile.Write((byte)Vertex.VertexColor.A);
+                        }
+                    }
+
+                    // Write weights
+                    foreach (var Vertex in Mesh.Verticies)
+                    {
+                        for (int i = 0; i < MaxSkinInfluence; i++)
+                        {
+                            var WeightID = (i < Vertex.Weights.Count) ? Vertex.Weights[i].BoneIndex : 0;
+                            var WeightValue = (i < Vertex.Weights.Count) ? Vertex.Weights[i].BoneWeight : 0.0f;
+
+                            // Write ID based on count
+                            if (BoneCountBuffer <= 0xFF)
+                                writeFile.Write((byte)WeightID);
+                            else if (BoneCountBuffer <= 0xFFFF)
+                                writeFile.Write((ushort)WeightID);
+                            else
+                                writeFile.Write((uint)WeightID);
+
+                            // Write value
+                            writeFile.Write((float)WeightValue);
+                        }
+                    }
+
+                    // Write faces
+                    foreach (var Face in Mesh.Faces)
+                    {
+                        // Write face indicies based on total vertex count
+                        if (VertexCount <= 0xFF)
+                        {
+                            writeFile.Write((byte)Face.FaceIndex1);
+                            writeFile.Write((byte)Face.FaceIndex2);
+                            writeFile.Write((byte)Face.FaceIndex3);
+                        }
+                        else if (VertexCount <= 0xFFFF)
+                        {
+                            writeFile.Write((ushort)Face.FaceIndex1);
+                            writeFile.Write((ushort)Face.FaceIndex2);
+                            writeFile.Write((ushort)Face.FaceIndex3);
+                        }
+                        else
+                        {
+                            writeFile.Write((uint)Face.FaceIndex1);
+                            writeFile.Write((uint)Face.FaceIndex2);
+                            writeFile.Write((uint)Face.FaceIndex3);
+                        }
+                    }
+
+                    // Write material indicies
+                    foreach (var Index in Mesh.MaterialReferenceIndicies)
+                        writeFile.Write((int)Index);
+                }
+
+                // Write material data
+                foreach (var Mat in Materials)
+                {
+                    // Write name
+                    writeFile.WriteNullTermString(Mat.Name);
+
+                    // Check type
+                    if (Mat.MaterialData is SEModelSimpleMaterial)
+                    {
+                        // Simple material
+                        writeFile.Write((bool)true);
+
+                        // Write the image references
+                        writeFile.WriteNullTermString(((SEModelSimpleMaterial)Mat.MaterialData).DiffuseMap);
+                        writeFile.WriteNullTermString(((SEModelSimpleMaterial)Mat.MaterialData).NormalMap);
+                        writeFile.WriteNullTermString(((SEModelSimpleMaterial)Mat.MaterialData).SpecularMap);
+                    }
+                }
+            }
         }
 
         /// <summary>

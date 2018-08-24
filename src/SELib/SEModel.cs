@@ -722,8 +722,13 @@ namespace SELib
                     }
 
                     // Write material indicies
-                    foreach (var Index in Mesh.MaterialReferenceIndicies)
+                    for (int i = 0; i < MatIndiciesCount; i++)
+                    {
+                        var Index = (i < Mesh.MaterialReferenceIndicies.Count) ? Mesh.MaterialReferenceIndicies[i] : -1;
+
+                        // Write the index, or null for no reference
                         writeFile.Write((int)Index);
+                    }
                 }
 
                 // Write material data

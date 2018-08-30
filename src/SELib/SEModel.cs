@@ -368,10 +368,6 @@ namespace SELib
         /* Model properties */
 
         /// <summary>
-        /// Specifies what data the model should use when using bones, defaults to local matricies.
-        /// </summary>
-        public ModelBoneSupportTypes ModelBoneSupport { get; set; }
-        /// <summary>
         /// Returns the number of bones in this model, this is automatically updated
         /// </summary>
         public uint BoneCount { get { return (uint)Bones.Count; } }
@@ -392,7 +388,6 @@ namespace SELib
             Bones = new List<SEModelBone>();
             Meshes = new List<SEModelMesh>();
             Materials = new List<SEModelMaterial>();
-            ModelBoneSupport = ModelBoneSupportTypes.SupportsLocals;
         }
 
         /* Functions and utilities */
@@ -439,43 +434,35 @@ namespace SELib
                 }
 
                 // Dynamic properties
-                bool HasScales = false;
+                bool HasScales = false, HasLocals = true, HasGlobals = false;
 
                 // Build bone data present flags
                 {
                     // Buffer
                     byte DataPresentFlags = 0x0;
 
-                    // Check for a scale not 1,1,1
+                    // Check for non-default bone data
                     foreach (var Bone in Bones)
                     {
                         if (Bone.Scale != Vector3.One)
-                        {
                             HasScales = true;
-                            break;
-                        }
-                    }
+                        if (Bone.LocalPosition != Vector3.Zero || Bone.LocalRotation != Quaternion.Identity)
+                            HasLocals = true;
+                        if (Bone.GlobalPosition != Vector3.Zero || Bone.GlobalRotation != Quaternion.Identity)
+                            HasGlobals = true;
 
-                    // Check for bone rotations
-                    switch (this.ModelBoneSupport)
-                    {
-                        case ModelBoneSupportTypes.SupportsBoth:
-                            DataPresentFlags |= (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_GLOBAL_MATRIX;
-                            DataPresentFlags |= (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_LOCAL_MATRIX;
-                            break;
-                        case ModelBoneSupportTypes.SupportsGlobals:
-                            DataPresentFlags |= (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_GLOBAL_MATRIX;
-                            break;
-                        case ModelBoneSupportTypes.SupportsLocals:
-                            DataPresentFlags |= (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_LOCAL_MATRIX;
+                        // Check to end
+                        if (HasScales && HasLocals && HasGlobals)
                             break;
                     }
 
-                    // Check for scales
+                    // Check for bone types
                     if (HasScales)
-                    {
                         DataPresentFlags |= (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_SCALES;
-                    }
+                    if (HasLocals)
+                        DataPresentFlags |= (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_LOCAL_MATRIX;
+                    if (HasGlobals)
+                        DataPresentFlags |= (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_GLOBAL_MATRIX;
 
                     // Write it
                     writeFile.Write((byte)DataPresentFlags);
@@ -572,7 +559,7 @@ namespace SELib
                     writeFile.Write((int)Bone.BoneParent);
 
                     // Write global matrix
-                    if (ModelBoneSupport == ModelBoneSupportTypes.SupportsGlobals || ModelBoneSupport == ModelBoneSupportTypes.SupportsBoth)
+                    if (HasGlobals)
                     {
                         writeFile.Write((float)Bone.GlobalPosition.X);
                         writeFile.Write((float)Bone.GlobalPosition.Y);
@@ -584,7 +571,7 @@ namespace SELib
                     }
 
                     // Write local matrix
-                    if (ModelBoneSupport == ModelBoneSupportTypes.SupportsLocals || ModelBoneSupport == ModelBoneSupportTypes.SupportsBoth)
+                    if (HasLocals)
                     {
                         writeFile.Write((float)Bone.LocalPosition.X);
                         writeFile.Write((float)Bone.LocalPosition.Y);
@@ -796,21 +783,6 @@ namespace SELib
                 var BoneDataPresentFlags = readFile.ReadByte();
                 // Mesh data present flags
                 var MeshDataPresentFlags = readFile.ReadByte();
-
-                // Set rolling flags for bone data
-                if (Convert.ToBoolean(BoneDataPresentFlags & (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_GLOBAL_MATRIX) 
-                    && Convert.ToBoolean(BoneDataPresentFlags & (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_LOCAL_MATRIX))
-                {
-                    model.ModelBoneSupport = ModelBoneSupportTypes.SupportsBoth;
-                }
-                else if (Convert.ToBoolean(BoneDataPresentFlags & (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_GLOBAL_MATRIX))
-                {
-                    model.ModelBoneSupport = ModelBoneSupportTypes.SupportsGlobals;
-                }
-                else if (Convert.ToBoolean(BoneDataPresentFlags & (byte)SEModel_BoneDataPresenceFlags.SEMODEL_PRESENCE_LOCAL_MATRIX))
-                {
-                    model.ModelBoneSupport = ModelBoneSupportTypes.SupportsLocals;
-                }
 
                 // Read counts
                 var BoneCount = readFile.ReadInt32();

@@ -197,7 +197,7 @@ namespace UnitTests
                 // Make it
                 var model = new SEModel();
                 // Allow globals too
-                model.ModelBoneSupport = ModelBoneSupportTypes.SupportsBoth;
+                //model.ModelBoneSupport = ModelBoneSupportTypes.SupportsBoth;
 
                 // Add some bones
                 model.AddBone("bone_0001", -1, Vector3.Zero, Quaternion.Identity, Vector3.Zero, Quaternion.Identity, Vector3.One);

@@ -1,4 +1,12 @@
-# SELibDotNet
+# SELibDotNet (DEPRECATED)
+
+# NOTICE: SEAnims/SEModels are now DEPRECATED. Cast is the newly supported model format.
+
+- Convert SE formats to Cast Losslessly [SECast](https://dtzxporter.com/tools/secast)
+- Get cast plugins [Cast](https://github.com/dtzxporter/cast)
+- "My Tool Doesn't Support Cast" - BEG THE DEVELOPER, CAST IS MUCH EASIER TO EXPORT! Or use the converter.
+
+---
 
 A .NET library for reading and writing SE Format files
 
